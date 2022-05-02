@@ -61,10 +61,13 @@ func (p *Runner) CombinedOutput() (result string, err error) {
 }
 
 // PipeOutput 即时输出结果
-func (p *Runner) PipeOutput() {
+func (p *Runner) PipeOutput() error {
 	for _, v := range p.commands {
-		p.pipeExec(v)
+		if err := p.pipeExec(v); err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 func (p *Runner) wrapCmd(cmd *exec.Cmd) {
@@ -76,11 +79,11 @@ func (p *Runner) wrapCmd(cmd *exec.Cmd) {
 	}
 }
 
-func (p *Runner) pipeExec(command string) {
+func (p *Runner) pipeExec(command string) (err error) {
 	c := exec.Command(p.shell, "-c", command)
 	p.wrapCmd(c)
 	c.Stdin = os.Stdin
-	
+
 	stderr, err := c.StderrPipe()
 	if err != nil {
 		return
@@ -89,17 +92,17 @@ func (p *Runner) pipeExec(command string) {
 	if err != nil {
 		return
 	}
-	
+
 	//c.Stderr = c.Stdout
-	
+
 	out := make(chan []byte)
 	defer func() {
 		close(out)
 	}()
-	
+
 	var wg sync.WaitGroup
 	wg.Add(2)
-	
+
 	go func() {
 		//enter := false
 		scanner := bufio.NewScanner(stdout)
@@ -126,4 +129,5 @@ func (p *Runner) pipeExec(command string) {
 	if err != nil {
 		return
 	}
+	return
 }
